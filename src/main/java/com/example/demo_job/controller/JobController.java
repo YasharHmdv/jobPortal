@@ -35,20 +35,20 @@ public class JobController {
         // Authenticate with Djinni first
         authService.authenticate();
 
-        Map<String, JobParameter> params = new HashMap<>();
-        params.put("startTime", new JobParameter(System.currentTimeMillis()));
-
-        JobExecution execution = jobLauncher.run(
-                scrapeDjinniJobsJob,
-                new JobParameters(params)
+        Map<String, JobParameter<?>> params = Map.of(
+                "startTime", new JobParameter<>(System.currentTimeMillis(), Long.class),
+                "source", new JobParameter<>("DJINNI", String.class)
         );
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("jobId", execution.getJobId());
-        response.put("status", execution.getStatus());
-        response.put("startTime", execution.getStartTime());
+        JobParameters jobParameters = new JobParameters(params);
+        JobExecution execution = jobLauncher.run(scrapeDjinniJobsJob, jobParameters);
 
-        return ResponseEntity.ok(response);
+        return ResponseEntity.ok(Map.of(
+                "jobId", execution.getJobId(),
+                "status", execution.getStatus().name(),
+                "executionId", execution.getId(),
+                "parameters", execution.getJobParameters()
+        ));
     }
 
     /**
