@@ -24,7 +24,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class DjinniJobItemReader implements ItemReader<DjinniJobItem> {
     private static final String DJINNI_URL = "https://djinni.co";
-    private static final String DASHBOARD_PATH = "/my/dashboard/";
+    private static final String DASHBOARD_PATH = "https://djinni.co/my/dashboard/";
     
     private final DjinniAuthService authService;
     private final DjinniConfig djinniConfig;
@@ -57,8 +57,8 @@ public class DjinniJobItemReader implements ItemReader<DjinniJobItem> {
 
             // Perform login (you'll need actual credentials)
             Document dashboard = Jsoup.connect(DJINNI_URL)
-                    .data("email", "your@email.com")
-                    .data("password", "yourpassword")
+                    .data("email", "yashar.gamidov@gmail.com")
+                    .data("password", "@Hemidzade179179")
                     .cookies(loginForm.cookies())
                     .post();
 

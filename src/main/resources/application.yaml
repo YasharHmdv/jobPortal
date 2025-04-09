@@ -14,7 +14,7 @@ spring:
 djinni:
   credentials:
     email: yashar.gamidov@gmail.com
-    password: yourpassword
+    password: "@Hemidzade179179"
   scraping:
     base-url: https://djinni.co
     dashboard-path: /my/dashboard/
