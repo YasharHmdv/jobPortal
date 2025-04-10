@@ -14,10 +14,10 @@ spring:
 djinni:
   credentials:
     email: yashar.gamidov@gmail.com
-    password: "@Hemidzade179179"
+    password:
   scraping:
     base-url: https://djinni.co
-    dashboard-path: /my/dashboard/
+    dashboard-path: https://djinni.co/my/dashboard/
     jobs-per-page: 25
     max-pages: 10  # Limit for demo purposes
     date-range: 90 # Days (3 months)
