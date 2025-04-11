@@ -53,23 +53,8 @@ public class DjinniScraperService {
 
     public int scrapeAndSaveJobs() throws Exception {
         // Initialize web driver (you'll need to add Selenium dependency)
-        WebDriverManager.chromedriver().driverVersion("135.0.7049.85").setup();
-        ChromeOptions options = new ChromeOptions();
-        options.addArguments(
-                "--headless=new", // New headless mode
-                "--disable-gpu",
-                "--window-size=1920,1080",
-                "--no-sandbox",
-                "--disable-dev-shm-usage",
-                "--disable-blink-features=AutomationControlled"
-        );
-
-        // Disable CDP if not needed
-        options.setExperimentalOption("excludeSwitches",
-                Collections.singletonList("enable-automation"));
-        options.setExperimentalOption("useAutomationExtension", false);
-
-        WebDriver driver = new ChromeDriver(options);
+        WebDriver driver = new ChromeDriver();
+        driver.manage().timeouts().implicitlyWait(10, TimeUnit.SECONDS);
 
 
         try {
