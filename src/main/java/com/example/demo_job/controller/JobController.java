@@ -1,44 +1,30 @@
 package com.example.demo_job.controller;
 
-import com.example.demo_job.config.JobMapper;
-import com.example.demo_job.dtos.*;
-import com.example.demo_job.service.JobService;
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.web.PageableDefault;
+import com.example.demo_job.service.DjinniScraperService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequiredArgsConstructor
-@RequestMapping("/jobs")
+@RequestMapping("/api/jobs")
 public class JobController {
-
-    private final JobMapper jobMapper;
-    private final JobService jobService;
-    @PostMapping
-    public ResponseEntity<JobDto> createJob(@Valid @RequestBody JobPostDto jobPostDto) {
-        JobDto createdJob = jobService.createJob(jobPostDto);
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdJob);
+    
+    private final DjinniScraperService djinniScraperService;
+    
+    public JobController(DjinniScraperService djinniScraperService) {
+        this.djinniScraperService = djinniScraperService;
     }
-    @GetMapping("/search")
-    public ResponseEntity<JobResponse> searchJobs(
-            @Valid JobSearchRequest searchRequest,
-            @PageableDefault(sort = "postedDate", direction = Sort.Direction.DESC) Pageable pageable) {
-
-        JobSearchCriteria criteria = jobMapper.toSearchCriteria(searchRequest);
-        Page<JobDto> jobs = jobService.getAllJobs(criteria, pageable);
-        return ResponseEntity.ok(new JobResponse(jobs));
+    
+    @PostMapping("/scrape-djinni")
+    public ResponseEntity<String> scrapeDjinniJobs() {
+        try {
+            int scrapedCount = djinniScraperService.scrapeAndSaveJobs();
+            return ResponseEntity.ok("Successfully scraped and saved " + scrapedCount + " jobs from Djinni.co");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error scraping jobs: " + e.getMessage());
+        }
     }
-    @PostMapping("/load")
-    public ResponseEntity<BatchJobLoadResponse> loadJobs() {
-        jobService.loadJobsFromExternalSource();
-        return ResponseEntity.ok(new BatchJobLoadResponse(/*...*/));
-    }
-
-
 }

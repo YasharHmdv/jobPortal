@@ -1,5 +1,6 @@
 package com.example.demo_job.repo;
 
+
 import com.example.demo_job.model.Industry;
 import org.springframework.data.jpa.repository.JpaRepository;
 

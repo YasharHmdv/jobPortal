@@ -36,12 +36,17 @@ dependencies {
 	implementation 'org.mapstruct:mapstruct:1.5.5.Final'
 	annotationProcessor 'org.mapstruct:mapstruct-processor:1.5.5.Final'
 
-	runtimeOnly 'com.h2database:h2'
 	runtimeOnly 'com.mysql:mysql-connector-j'
 	implementation 'org.springframework.boot:spring-boot-starter-webflux'
 	annotationProcessor 'org.projectlombok:lombok'
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+	// Selenium Core Dependency (Includes DevTools protocol support)
+	implementation 'org.seleniumhq.selenium:selenium-java:4.19.1'  // Make sure this matches your Selenium version
+
+	// WebDriverManager for automatic management of ChromeDriver versions
+	implementation 'io.github.bonigarcia:webdrivermanager:5.3.0'
 }
 
 tasks.named('test') {
