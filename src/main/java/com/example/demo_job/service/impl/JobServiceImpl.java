@@ -14,6 +14,7 @@ import com.example.demo_job.repo.JobPortalRepository;
 import com.example.demo_job.service.JobScraperService;
 import com.example.demo_job.service.JobService;
 import com.example.demo_job.service.JobSpecification;
+import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;

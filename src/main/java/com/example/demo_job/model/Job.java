@@ -82,5 +82,4 @@ public class Job {
     
     private boolean offersRelocation;
     
-    // Constructors, getters, setters, equals, hashCode, toString
 }

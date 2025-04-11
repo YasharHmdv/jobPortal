@@ -28,5 +28,4 @@ public class Industry {
     public Industry(String industry) {
     }
 
-    // Constructors, getters, setters
 }

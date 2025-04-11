@@ -16,5 +16,4 @@ public class Location {
     @Column(name = "is_hybrid")
     private boolean hybrid;
     
-    // Constructors, getters, setters
 }

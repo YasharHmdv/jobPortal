@@ -14,5 +14,4 @@ public class SalaryRange {
     private BigDecimal maxSalary;
     private String currency;
     
-    // Constructors, getters, setters
 }

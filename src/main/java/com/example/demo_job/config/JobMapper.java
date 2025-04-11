@@ -11,23 +11,21 @@ import org.mapstruct.AfterMapping;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
-import org.mapstruct.factory.Mappers;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 
 @Mapper(componentModel = "spring")
 @Component
 public interface JobMapper {
-    JobMapper INSTANCE = Mappers.getMapper(JobMapper.class);
     Job toEntity(JobPostDto dto);
     JobDto toDto(Job entity);
+    JobSearchCriteria toSearchCriteria(JobSearchRequest request);
+
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "company", ignore = true)
     @Mapping(target = "industry", ignore = true)
     void updateEntityFromDto(JobPostDto dto, @MappingTarget Job entity);
-    JobSearchCriteria toSearchCriteria(JobSearchRequest request);
-
     
     default String map(Company company) {
         return company != null ? company.getName() : null;

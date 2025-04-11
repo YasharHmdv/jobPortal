@@ -35,5 +35,4 @@ public class Company {
     public Company(String companyName) {
     }
 
-    // Constructors, getters, setters
 }
