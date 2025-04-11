@@ -43,10 +43,11 @@ dependencies {
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
 	// Selenium Core Dependency (Includes DevTools protocol support)
-	implementation 'org.seleniumhq.selenium:selenium-java:4.19.1'  // Make sure this matches your Selenium version
+	implementation 'org.seleniumhq.selenium:selenium-java:4.20.0'  // Make sure this matches your Selenium version
 
+	testImplementation group: 'org.seleniumhq.selenium', name: 'selenium-devtools-v111', version: '4.9.0'
 	// WebDriverManager for automatic management of ChromeDriver versions
-	implementation 'io.github.bonigarcia:webdrivermanager:5.3.0'
+	implementation 'io.github.bonigarcia:webdrivermanager:5.7.0'
 }
 
 tasks.named('test') {
