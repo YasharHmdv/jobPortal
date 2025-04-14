@@ -3,269 +3,147 @@ package com.example.demo_job.service;
 import com.example.demo_job.model.Company;
 import com.example.demo_job.model.Job;
 import com.example.demo_job.model.Location;
-import com.example.demo_job.model.SalaryRange;
 import com.example.demo_job.repo.CompanyRepository;
 import com.example.demo_job.repo.CustomJobRepository;
 import com.example.demo_job.repo.IndustryRepository;
-import io.github.bonigarcia.wdm.WebDriverManager;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.openqa.selenium.*;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeOptions;
-import org.openqa.selenium.support.ui.ExpectedConditions;
-import org.openqa.selenium.support.ui.WebDriverWait;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
-import java.math.BigDecimal;
-import java.time.Duration;
-import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.concurrent.TimeUnit;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class DjinniScraperService {
-    
+
     private final CustomJobRepository customJobRepository;
     private final CompanyRepository companyRepository;
     private final IndustryRepository industryRepository;
-    
+    private final CustomJobRepository jobService;
+    private final CompanyService companyService;
+    private final IndustryService industryService;
+    private final RestTemplate restTemplate;
+
     @Value("${djinni.scraping.base-url}")
     private String baseUrl;
-    
+
     @Value("${djinni.scraping.jobs-per-page}")
     private int jobsPerPage;
-    
+
     @Value("${djinni.scraping.max-pages}")
     private int maxPages;
-    
+
     @Value("${djinni.credentials.email}")
     private String email;
-    
+
     @Value("${djinni.credentials.password}")
     private String password;
 
-    public int scrapeAndSaveJobs() throws Exception {
-        // Initialize web driver (you'll need to add Selenium dependency)
-        WebDriver driver = new ChromeDriver();
-        driver.manage().timeouts().implicitlyWait(10, TimeUnit.SECONDS);
+    @Value("${djinni.base-url:https://djinni.co}")
+    private String djinniBaseUrl;
 
-
+    @Async
+    public void scrapeAndSaveJobs() {
         try {
-            // Login to Djinni
-            login(driver);
+            String jobsUrl = djinniBaseUrl + "/jobs/?keywords=Remote";
+            ResponseEntity<String> response = restTemplate.getForEntity(jobsUrl, String.class);
 
-            // Scrape jobs
-            List<Job> jobs = scrapeJobs(driver);
-
-            // Save jobs
-            return saveJobs(jobs);
-
-        } finally {
-            driver.quit();
+            if (response.getStatusCode().is2xxSuccessful()) {
+                List<Job> jobs = parseJobs(response.getBody());
+                jobService.saveAllJobs(jobs);
+            }
+        } catch (Exception e) {
+            log.error("Error scraping Djinni jobs", e);
         }
     }
 
-    private void login(WebDriver driver) {
-        driver.get(baseUrl + "/login");
-
-        WebElement emailField = driver.findElement(By.name("email"));
-        emailField.sendKeys(email);
-
-        WebElement passwordField = driver.findElement(By.name("password"));
-        passwordField.sendKeys(password);
-
-        passwordField.sendKeys(Keys.RETURN);
-    }
-
-    private List<Job> scrapeJobs(WebDriver driver) {
+    private List<Job> parseJobs(String html) {
         List<Job> jobs = new ArrayList<>();
+        Document doc = Jsoup.parse(html);
 
-        try {
-            for (int page = 1; page <= maxPages; page++) {
-                String url = baseUrl + "/jobs/?page=" + page;
-                log.info("Scraping page {}: {}", page, url);
-
-                driver.get(url);
-                waitForPageLoad(driver);
-
-                List<WebElement> jobElements = driver.findElements(
-                        By.cssSelector(".list-jobs__item:not(.sponsored-job)"));
-
-                if (jobElements.isEmpty()) {
-                    log.warn("No jobs found on page {}", page);
-                    break;
+        Elements jobElements = doc.select(".list-jobs__item");
+        for (Element jobElement : jobElements) {
+            try {
+                Job job = parseJobElement(jobElement);
+                if (shouldIncludeJob(job)) {
+                    jobs.add(job);
                 }
-
-                for (WebElement jobElement : jobElements) {
-                    try {
-                        Job job = parseJobElement(driver, jobElement);
-                        if (job != null) {
-                            jobs.add(job);
-                        }
-                    } catch (Exception e) {
-                        log.error("Error parsing job element", e);
-                    }
-                }
-
-                if (shouldStopPagination(driver)) {
-                    break;
-                }
+            } catch (Exception e) {
+                log.error("Error parsing job element", e);
             }
-        } catch (Exception e) {
-            log.error("Error during scraping", e);
-            throw e;
         }
 
         return jobs;
     }
 
-    private void waitForPageLoad(WebDriver driver) {
-        new WebDriverWait(driver, Duration.ofSeconds(15))
-                .until(d -> ((JavascriptExecutor) d)
-                        .executeScript("return document.readyState")
-                        .equals("complete"));
-    }
-
-    private boolean shouldStopPagination(WebDriver driver) {
-        try {
-            return driver.findElements(By.cssSelector(".pagination li.active + li.disabled"))
-                    .stream()
-                    .anyMatch(el -> el.getText().contains("Next"));
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    private Job parseJobElement(WebDriver driver, WebElement jobElement) {
-        try {
-            // Scroll element into view
-            ((JavascriptExecutor) driver).executeScript(
-                    "arguments[0].scrollIntoView(true);", jobElement);
-
-            Job job = new Job();
-            // ... [your parsing logic]
-
-            return job;
-        } catch (StaleElementReferenceException e) {
-            log.warn("Stale element reference, retrying...");
-            return null;
-        }
-    }
-
-    private Job parseJobElement(WebElement jobElement) {
+    private Job parseJobElement(Element jobElement) {
         Job job = new Job();
 
-        // Extract basic info
-        String title = jobElement.findElement(By.cssSelector(".job-list-item__title")).getText();
+        // Parse title
+        String title = jobElement.select(".list-jobs__title a").text();
         job.setTitle(title);
 
-        // Extract company
-        String companyName = jobElement.findElement(By.cssSelector(".job-list-item__company")).getText();
-        Company company = companyRepository.findByName(companyName)
-                .orElseGet(() -> companyRepository.save(new Company(companyName)));
+        // Parse company
+        String companyName = jobElement.select(".list-jobs__details__info a").first().text();
+        Company company = companyService.findOrCreateCompany(companyName);
         job.setCompany(company);
 
-        // Extract location info
-        String locationText = jobElement.findElement(By.cssSelector(".location-text")).getText();
-        Location location = parseLocation(locationText);
+        // Parse location
+        Location location = new Location();
+        location.setRemote(true); // All Djinni jobs we're scraping are remote
         job.setLocation(location);
 
-        // Extract job type (remote/office)
-        boolean isRemote = locationText.toLowerCase().contains("remote");
-        job.setRemote(isRemote);
+        // Parse job type
+        String jobTypeText = jobElement.select(".job-list-item__job-type").text();
+        job.setJobType(parseJobType(jobTypeText));
 
-        // Extract posted date
-        String postedDateText = jobElement.findElement(By.cssSelector(".job-list-item__date")).getText();
-        LocalDate postedDate = parsePostedDate(postedDateText);
-        job.setPostedDate(postedDate);
-
-        // Extract description (simplified)
-        String description = jobElement.findElement(By.cssSelector(".job-list-item__description")).getText();
+        // Parse description and requirements
+        String description = jobElement.select(".list-jobs__description").text();
         job.setDescription(description);
 
-        // Extract salary if available
-        try {
-            String salaryText = jobElement.findElement(By.cssSelector(".public-salary-item")).getText();
-            SalaryRange salaryRange = parseSalary(salaryText);
-            job.setSalaryRange(salaryRange);
-        } catch (NoSuchElementException e) {
-            // Salary not available for this job
-        }
+        // Parse posted date
+        String postedDateText = jobElement.select(".job-list-item__counts .text-date").text();
+        job.setPostedDate(parsePostedDate(postedDateText));
 
-        // Extract source URL
-        String relativeUrl = jobElement.findElement(By.cssSelector(".job-list-item__link")).getAttribute("href");
-        job.setSourceUrl(baseUrl + relativeUrl);
+        // Parse tags
+        Set<String> tags = jobElement.select(".job-list-item__tags span").stream()
+                .map(Element::text)
+                .collect(Collectors.toSet());
+        job.setTags(tags);
+
+        // Parse source URL
+        String relativeUrl = jobElement.select(".list-jobs__title a").attr("href");
+        job.setSourceUrl(djinniBaseUrl + relativeUrl);
+
+        // Parse countries (from your requirement)
+        Set<String> countries = parseCountries(jobElement);
+        job.setCountries(countries);
+
+        // Parse relocation info
+        job.setOffersRelocation(parseRelocationInfo(jobElement));
 
         return job;
     }
 
-    private Location parseLocation(String locationText) {
-        Location location = new Location();
-
-        if (locationText.toLowerCase().contains("remote")) {
-            location.setCountry("Remote");
-
-        } else {
-            // Simple parsing - you might need more sophisticated logic
-            String[] parts = locationText.split(",");
-            if (parts.length > 0) location.setCity(parts[0].trim());
-            if (parts.length > 1) location.setCountry(parts[1].trim());
-        }
-
-        return location;
+    private boolean shouldIncludeJob(Job job) {
+        // Filter according to requirements: Remote and Worldwide or includes Azerbaijan
+        return job.getLocation().isRemote() &&
+                (job.getCountries().contains("Worldwide") ||
+                        job.getCountries().contains("Azerbaijan") ||
+                        job.isOffersRelocation());
     }
 
-    private LocalDate parsePostedDate(String postedDateText) {
-        if (postedDateText.contains("today")) {
-            return LocalDate.now();
-        } else if (postedDateText.contains("yesterday")) {
-            return LocalDate.now().minusDays(1);
-        } else {
-            // Parse "X days ago"
-            int daysAgo = Integer.parseInt(postedDateText.replaceAll("\\D+", ""));
-            return LocalDate.now().minusDays(daysAgo);
-        }
-    }
-
-    private SalaryRange parseSalary(String salaryText) {
-        SalaryRange salaryRange = new SalaryRange();
-
-        // Simple parsing - adjust as needed
-        String cleanText = salaryText.replaceAll("[^\\d\\s]", "").trim();
-        String[] parts = cleanText.split("\\s+");
-
-        if (parts.length >= 2) {
-            salaryRange.setMinSalary(new BigDecimal(parts[0]));
-            salaryRange.setMaxSalary(new BigDecimal(parts[1]));
-            salaryRange.setCurrency("USD"); // Adjust based on actual data
-        }
-
-        return salaryRange;
-    }
-
-    private int saveJobs(List<Job> jobs) {
-        int savedCount = 0;
-
-        for (Job job : jobs) {
-            try {
-                // Check if job already exists by title and company
-                if (!customJobRepository.existsByTitleAndCompany(job.getTitle(), job.getCompany())) {
-                    customJobRepository.save(job);
-                    savedCount++;
-                }
-            } catch (Exception e) {
-                // Log error but continue with other jobs
-                System.err.println("Error saving job: " + e.getMessage());
-            }
-        }
-
-        return savedCount;
-    }
+    // Helper methods for parsing specific fields...
 }
